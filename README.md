@@ -23,7 +23,7 @@ Get the latest release from [GitHub Releases](https://github.com/Zouzitou/yt2mp4
 | Platform | File |
 |----------|------|
 | **macOS** (Apple Silicon) | `Yt2Mp4_*.dmg` |
-| **Windows** (64-bit) | `Yt2Mp4 Setup *.exe` — installer only (WebView2 bootstrapper if needed) |
+| **Windows** (64-bit) | `Yt2Mp4.Setup.*.exe` — installer only (WebView2 bootstrapper if needed) |
 
 ### v1.1 highlights
 
