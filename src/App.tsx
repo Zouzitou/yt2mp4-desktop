@@ -6,6 +6,7 @@ import {
 } from '@tauri-apps/plugin-notification';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
+import BulkDownloadPanel from './components/BulkDownloadPanel';
 import DownloadHistory from './components/DownloadHistory';
 import SetupScreen from './components/SetupScreen';
 import Settings from './components/Settings';
@@ -65,6 +66,8 @@ export default function App() {
     ffmpeg: SetupProgress | null;
   }>({ ytdlp: null, ffmpeg: null });
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [inputMode, setInputMode] = useState<'single' | 'bulk'>('single');
+  const [bulkDownloading, setBulkDownloading] = useState(false);
   const downloadAbortRef = useRef(false);
   // Increments on every URL submit. Stale responses are ignored.
   const fetchIdRef = useRef(0);
@@ -330,7 +333,8 @@ export default function App() {
   const isSetup   = appState === 'setup' || appState === 'setup_error';
   const isIdle    = appState === 'idle';
   const showPreview = ['preview', 'downloading', 'complete', 'download_error'].includes(appState);
-  const urlInputDisabled = appState === 'fetching' || appState === 'downloading';
+  const urlInputDisabled =
+    appState === 'fetching' || appState === 'downloading' || bulkDownloading;
 
   return (
     <div
@@ -458,13 +462,62 @@ export default function App() {
                           Yt2Mp4
                         </h1>
                         <p style={{ fontSize: 13, color: 'var(--text-tertiary)', letterSpacing: '0.01em' }}>
-                          Paste · Pick quality · Download
+                          {inputMode === 'single'
+                            ? 'Paste · Pick quality · Download'
+                            : 'Paste links · Pick quality · Download all'}
                         </p>
                       </div>
                     </div>
 
-                    <div style={{ width: '100%' }}>
-                      <UrlInput onSubmit={handleUrlSubmit} disabled={urlInputDisabled} />
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          background: 'var(--surface-elevated)',
+                          borderRadius: 11,
+                          padding: 3,
+                          gap: 2,
+                        }}
+                      >
+                        {(['single', 'bulk'] as const).map((mode) => {
+                          const active = inputMode === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setInputMode(mode)}
+                              style={{
+                                flex: 1,
+                                height: 32,
+                                borderRadius: 8,
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                background: active
+                                  ? 'linear-gradient(135deg, #8b5cf6, #6366f1, #3b82f6)'
+                                  : 'transparent',
+                                color: active ? '#fff' : 'var(--text-tertiary)',
+                                boxShadow: active ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {mode === 'single' ? 'Single link' : 'Bulk download'}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {inputMode === 'single' ? (
+                        <UrlInput onSubmit={handleUrlSubmit} disabled={urlInputDisabled} />
+                      ) : (
+                        <BulkDownloadPanel
+                          disabled={urlInputDisabled}
+                          downloadProgress={downloadProgress}
+                          onDownloadingChange={setBulkDownloading}
+                          onComplete={() => setHasNewDownloads(true)}
+                        />
+                      )}
                     </div>
                   </motion.div>
                 ) : (
