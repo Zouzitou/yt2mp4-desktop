@@ -28,3 +28,7 @@ src-tauri/target/
 
 # Release artifacts (uploaded via GitHub Releases)
 build/
+builds/
+
+# Local Claude config
+.claude/
