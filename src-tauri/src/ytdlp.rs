@@ -352,11 +352,11 @@ pub async fn download_video(
         }
     }
 
+    // Drain stderr task before waiting on the child, so we capture all output
+    let _ = stderr_task.await;
+
     let status = child.wait().await
         .map_err(|e| format!("Process error: {}", e))?;
-
-    // Drain stderr task
-    let _ = stderr_task.await;
 
     let user_cancelled = {
         let mut guard = active.lock().await;
@@ -372,8 +372,15 @@ pub async fn download_video(
         #[cfg(unix)]
         {
             use std::os::unix::process::ExitStatusExt;
-            if status.signal().is_some() {
+            if status.signal() == Some(15) {
+                // SIGTERM — user-requested cancellation
                 return Err("cancelled".to_string());
+            }
+            if status.signal().is_some() {
+                return Err(format!(
+                    "Download process crashed (signal {})",
+                    status.signal().unwrap()
+                ));
             }
         }
         let stderr_hint = classify_download_error(&output_dir);

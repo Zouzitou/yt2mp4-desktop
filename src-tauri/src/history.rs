@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 const MAX_HISTORY: usize = 50;
+
+static HISTORY_MUTEX: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
@@ -38,9 +41,13 @@ pub fn load_history(app_data_dir: &PathBuf) -> Vec<HistoryEntry> {
 }
 
 pub fn add_history_entry(app_data_dir: &PathBuf, entry: HistoryEntry) -> Result<(), String> {
+    let _lock = HISTORY_MUTEX.lock().map_err(|e| e.to_string())?;
     let mut entries = load_history(app_data_dir);
-    // Remove any entry with the same file_path to avoid duplicates
-    entries.retain(|e| e.file_path != entry.file_path);
+    // Remove any entry with the same file_path to avoid duplicates.
+    // Skip dedup for failed entries (empty file_path) to avoid wiping all failures.
+    if !entry.file_path.is_empty() {
+        entries.retain(|e| e.file_path != entry.file_path);
+    }
     // Prepend new entry (newest first)
     entries.insert(0, entry);
     // Cap at MAX_HISTORY

@@ -192,7 +192,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
         {/* Source link */}
         <button
-          onClick={() => openUrl('https://github.com').catch(() => {})}
+          onClick={() => openUrl('https://github.com/Zouzitou/yt2mp4-desktop').catch(() => {})}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'transparent', border: 'none', cursor: 'pointer',

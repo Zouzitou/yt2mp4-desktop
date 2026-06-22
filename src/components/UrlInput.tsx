@@ -1,10 +1,8 @@
 import { ClipboardPaste, Link2, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { pasteFromClipboard } from '../hooks/useClipboard';
+import { isVideoUrl } from '../lib/urlUtils';
 import { useAppStore } from '../stores/useAppStore';
-
-const VIDEO_REGEX =
-  /^(https?:\/\/)?((www\.|m\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}|(www\.|vm\.)?tiktok\.com\/((@[^/?#]+\/video\/\d+)|(t\/[A-Za-z0-9]+)|([A-Za-z0-9_-]{5,})))/;
 
 interface Props {
   onSubmit: (url: string) => void;
@@ -21,7 +19,7 @@ export default function UrlInput({ onSubmit, compact, disabled }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const validate = useCallback(
-    (val: string) => VIDEO_REGEX.test(val.trim()),
+    (val: string) => isVideoUrl(val),
     [],
   );
 
@@ -42,7 +40,7 @@ export default function UrlInput({ onSubmit, compact, disabled }: Props) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setUrl(val);
-    if (validationError && validate(val)) setValidationError(null);
+    if (validationError && isVideoUrl(val)) setValidationError(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -57,6 +55,8 @@ export default function UrlInput({ onSubmit, compact, disabled }: Props) {
       if (validate(text)) {
         setValidationError(null);
         setTimeout(() => onSubmit(text), 40);
+      } else {
+        setValidationError(null);
       }
     }
     inputRef.current?.focus();

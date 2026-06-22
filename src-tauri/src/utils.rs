@@ -44,7 +44,7 @@ pub fn format_bytes(bytes: u64) -> String {
 
 /// Format speed in bytes/sec as human-readable.
 pub fn format_speed(bytes_per_sec: f64) -> String {
-    if bytes_per_sec <= 0.0 {
+    if bytes_per_sec <= 0.0 || bytes_per_sec.is_nan() {
         return "-- MB/s".to_string();
     }
     let mbs = bytes_per_sec / (1024.0 * 1024.0);

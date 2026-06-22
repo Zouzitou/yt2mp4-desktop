@@ -218,6 +218,7 @@ function TimeInput({
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const display = editing ? draft : formatSeconds(value);
@@ -227,10 +228,12 @@ function TimeInput({
     if (parsed !== null) {
       onChange(parsed);
       setInvalid(false);
+      setError(null);
     } else {
       // Reset to current value if invalid
       setInvalid(true);
       setTimeout(() => setInvalid(false), 800);
+      setError('Enter time as M:SS or H:MM:SS');
     }
     setEditing(false);
   };
@@ -291,6 +294,12 @@ function TimeInput({
           placeholder="0:00"
         />
       </div>
+
+      {error && (
+        <p style={{ fontSize: 11, color: 'var(--error)', lineHeight: 1.4, margin: 0 }}>
+          {error}
+        </p>
+      )}
 
       {/* Range slider */}
       <input

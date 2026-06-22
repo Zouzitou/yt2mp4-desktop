@@ -129,6 +129,8 @@ function HistoryCard({
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       style={{
         borderRadius: 12, border: '1px solid var(--border)',
         background: hovered ? 'var(--surface-elevated)' : 'var(--surface)',

@@ -18,6 +18,7 @@ export function formatViewCount(count: number): string {
 
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) return 'Unknown';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
@@ -34,10 +35,11 @@ export function formatRelativeTime(isoString: string): string {
 
 export function formatUploadDate(yyyymmdd: string): string {
   if (!yyyymmdd || yyyymmdd.length !== 8) return '';
-  const year = yyyymmdd.slice(0, 4);
-  const month = yyyymmdd.slice(4, 6);
-  const day = yyyymmdd.slice(6, 8);
-  const date = new Date(`${year}-${month}-${day}`);
+  const year = Number(yyyymmdd.slice(0, 4));
+  const month = Number(yyyymmdd.slice(4, 6)) - 1;
+  const day = Number(yyyymmdd.slice(6, 8));
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+  const date = new Date(year, month, day);
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 

@@ -32,3 +32,6 @@ builds/
 
 # Local Claude config
 .claude/
+
+# Code audit report (generated)
+errors.md

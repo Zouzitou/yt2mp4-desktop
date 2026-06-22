@@ -31,7 +31,7 @@ export default function SlidePanel({ open, onClose, title, children }: Props) {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.38)',
+              background: 'var(--panel-backdrop, rgba(0,0,0,0.38))',
               zIndex: 40,
             }}
           />
@@ -95,6 +95,7 @@ export default function SlidePanel({ open, onClose, title, children }: Props) {
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-hover)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-elevated)'; }}
+              aria-label="Close panel"
               >
                 ×
               </button>

@@ -332,8 +332,8 @@ export default function DownloadButton({
             </button>
           </div>
           {slowWarning && (
-            <p style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-              Taking longer than usual — yt-dlp is fetching the video. Hang tight.
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Video is still loading. This can take a moment for long videos.
             </p>
           )}
         </div>

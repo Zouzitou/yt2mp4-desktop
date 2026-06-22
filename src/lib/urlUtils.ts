@@ -36,8 +36,13 @@ export function extractVideoId(url: string): string {
     trimmed.match(/youtube\.com\/.*[?&]v=([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return ytMatch[1];
 
-  const tiktokMatch = trimmed.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
-  if (tiktokMatch) return tiktokMatch[1];
+  // TikTok: @user/video/12345, /t/XXXXX, or short-code
+  const tiktokVideo = trimmed.match(/tiktok\.com\/@([^/]+)\/video\/(\d+)/);
+  if (tiktokVideo) return tiktokVideo[2];
+  const tiktokShort = trimmed.match(/tiktok\.com\/t\/([A-Za-z0-9]+)/);
+  if (tiktokShort) return tiktokShort[1];
+  const tiktokCode = trimmed.match(/tiktok\.com\/([A-Za-z0-9_-]{5,})/);
+  if (tiktokCode) return tiktokCode[1];
 
   return '';
 }

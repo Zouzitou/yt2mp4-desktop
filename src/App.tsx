@@ -75,17 +75,33 @@ export default function App() {
   const notificationAskedRef = useRef(false);
   const installingRef = useRef(false);
 
-  // Load settings on mount
+  // Load settings on mount — merge backend data without overwriting local prefs
   useEffect(() => {
     getSettings()
       .then(async (s) => {
-        let updated = s;
-        if (!s.download_dir) {
-          const dir = await getDownloadDir();
-          updated = { ...s, download_dir: dir };
-          saveSettings(updated).catch(() => {});
+        const current = useSettingsStore.getState().settings;
+        // Only fill in fields that are missing (empty/zero) in the local store
+        const merged = { ...current };
+        let changed = false;
+        for (const key of Object.keys(s) as (keyof typeof s)[]) {
+          const backendVal = s[key];
+          const localVal = current[key];
+          const isEmpty = localVal === '' || localVal === 0 || localVal === undefined;
+          if (isEmpty && backendVal) {
+            (merged as Record<string, unknown>)[key] = backendVal;
+            changed = true;
+          }
         }
-        setSettings(updated);
+        // If download_dir is still empty after merge, pick the OS default
+        if (!merged.download_dir) {
+          const dir = await getDownloadDir();
+          merged.download_dir = dir;
+          changed = true;
+        }
+        if (changed) {
+          setSettings(merged);
+          saveSettings(merged).catch(() => {});
+        }
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -113,7 +129,7 @@ export default function App() {
       setSetupProgress((prev) => ({ ...prev, [p.step]: p }));
     });
     const u2 = listen('setup-complete', () => {
-      setTimeout(() => setAppState('idle'), 700);
+      setTimeout(() => setAppState('idle'), 300);
     });
     return () => {
       u1.then((f) => f());
@@ -137,6 +153,8 @@ export default function App() {
         setSettingsOpen((v) => !v);
       }
       if (e.key === 'h' || e.key === 'H') {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
         if (!settingsOpen && !historyOpen && appState !== 'setup' && appState !== 'setup_error') {
           setHistoryOpen(true);
           setHasNewDownloads(false);

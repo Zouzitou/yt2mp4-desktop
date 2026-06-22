@@ -20,14 +20,21 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            // Resolve app data directory and store as managed state
+            // Resolve app data directory and store as managed state.
+            // Fall back to a temp directory if the platform cannot provide one
+            // or if creation fails (sandboxed environments, permissions, etc).
             let app_data_dir = app
                 .path()
                 .app_data_dir()
-                .expect("Failed to resolve app data directory");
-            std::fs::create_dir_all(&app_data_dir)
-                .expect("Failed to create app data directory");
-            app.manage(AppDataDir(app_data_dir));
+                .unwrap_or_else(|_| std::env::temp_dir().join("yt2mp4-desktop"));
+            if let Err(e) = std::fs::create_dir_all(&app_data_dir) {
+                eprintln!("Warning: could not create app data dir at {:?}: {e}. Falling back to temp.", app_data_dir);
+                let fallback = std::env::temp_dir().join("yt2mp4-desktop");
+                let _ = std::fs::create_dir_all(&fallback);
+                app.manage(AppDataDir(fallback));
+            } else {
+                app.manage(AppDataDir(app_data_dir));
+            }
             app.manage(ActiveDownloadState::default());
             Ok(())
         })

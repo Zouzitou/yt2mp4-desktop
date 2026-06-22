@@ -311,7 +311,7 @@ export default function BulkDownloadPanel({
           )}
 
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', paddingLeft: 4, lineHeight: 1.5 }}>
-            No preview — downloads start immediately. Videos get the selected max quality (or lower if unavailable).
+            No preview — downloads start immediately. Videos get the selected max quality (or lower if unavailable). File sizes are not estimated in batch mode.
           </p>
 
           {/* Quality picker */}
@@ -517,6 +517,11 @@ export default function BulkDownloadPanel({
             <Download size={16} strokeWidth={2.5} />
             Download {urlCount > 0 ? `all ${urlCount}` : 'all'}
           </motion.button>
+          {urlCount === 0 && (
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+              Add at least one URL to start downloading.
+            </p>
+          )}
         </>
       )}
 

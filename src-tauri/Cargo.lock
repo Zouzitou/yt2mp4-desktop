@@ -6277,7 +6277,6 @@ dependencies = [
  "dirs 5.0.1",
  "flate2",
  "futures-util",
- "regex",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
