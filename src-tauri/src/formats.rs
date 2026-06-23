@@ -53,7 +53,9 @@ pub fn process_formats(formats: &[RawFormat], duration: u64) -> Vec<QualityOptio
         })
         .collect();
 
-    // Collect unique heights from video-capable formats
+    // Collect unique heights from video-capable formats.
+    // Formats with height:null (e.g. audio-only or low-res streams) are
+    // intentionally skipped — they aren't useful for per-resolution selection.
     let mut heights: Vec<u32> = usable
         .iter()
         .filter(|f| f.has_video())

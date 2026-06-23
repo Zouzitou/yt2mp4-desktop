@@ -111,7 +111,13 @@ async fn download_ytdlp(app: &AppHandle, client: &Client, bin_dir: &PathBuf) -> 
     std::fs::create_dir_all(bin_dir).map_err(|e| format!("Cannot create bin dir: {}", e))?;
 
     let dest = bin_dir.join(ytdlp_binary_name());
-    let tmp = bin_dir.join("yt-dlp.tmp");
+    let tmp = bin_dir.join(format!(
+        "yt-dlp-{}.tmp",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis().to_string())
+            .unwrap_or_else(|_| "0".to_string())
+    ));
 
     download_file_with_progress(app, client, &url, &tmp, "ytdlp").await?;
 
@@ -193,12 +199,19 @@ async fn download_ffmpeg_windows(app: &AppHandle, client: &Client, bin_dir: &Pat
 async fn download_ffmpeg_linux(app: &AppHandle, client: &Client, bin_dir: &PathBuf) -> Result<(), String> {
     let url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz";
     std::fs::create_dir_all(bin_dir).map_err(|e| format!("Cannot create bin dir: {}", e))?;
-    let tar_path = bin_dir.join("ffmpeg.tar.xz");
+    let tar_path = bin_dir.join(format!(
+        "ffmpeg-{}.tar.xz",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis().to_string())
+            .unwrap_or_else(|_| "0".to_string())
+    ));
     download_file_with_progress(app, client, url, &tar_path, "ffmpeg").await?;
 
     emit_progress_direct(app, "ffmpeg", "extracting", 96.0, "Extracting ffmpeg...");
-    extract_ffmpeg_from_tar(&tar_path, bin_dir)?;
+    let result = extract_ffmpeg_from_tar(&tar_path, bin_dir);
     let _ = std::fs::remove_file(&tar_path);
+    result?;
     make_executable(&bin_dir.join(ffmpeg_binary_name())).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -315,19 +328,22 @@ fn extract_ffmpeg_from_tar(tar_path: &PathBuf, bin_dir: &PathBuf) -> Result<(), 
         return Ok(());
     }
 
-    // Second try: extract to stdout
-    let output2 = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(format!(
-            "tar -xJf '{}' --wildcards '*/ffmpeg' -O > '{}/{}'",
-            tar_path.to_string_lossy(),
-            bin_dir.to_string_lossy(),
-            ffmpeg_binary_name()
-        ))
+    // Second try: extract to stdout via tar, pipe via Rust (no shell injection)
+    let tar_output = std::process::Command::new("tar")
+        .args([
+            "-xJf", &tar_path.to_string_lossy(),
+            "--wildcards", "*/ffmpeg",
+            "-O",
+        ])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
         .output()
         .map_err(|e| e.to_string())?;
 
-    if output2.status.success() {
+    if tar_output.status.success() {
+        let dest = bin_dir.join(ffmpeg_binary_name());
+        std::fs::write(&dest, &tar_output.stdout)
+            .map_err(|e| format!("Failed to write ffmpeg binary: {}", e))?;
         return Ok(());
     }
 

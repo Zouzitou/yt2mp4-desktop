@@ -106,7 +106,8 @@ pub async fn cmd_download_video(
                 status: "completed".to_string(),
                 file_exists: Some(true),
             };
-            let _ = add_history_entry(&app_data_dir, entry);
+            let _ = add_history_entry(&app_data_dir, entry)
+                .inspect_err(|e| eprintln!("Failed to save history entry: {e}"));
         }
         Err(e) if e != "cancelled" => {
             // Add failed entry to history
@@ -124,7 +125,8 @@ pub async fn cmd_download_video(
                 status: "failed".to_string(),
                 file_exists: Some(false),
             };
-            let _ = add_history_entry(&app_data_dir, entry);
+            let _ = add_history_entry(&app_data_dir, entry)
+                .inspect_err(|e| eprintln!("Failed to save history entry: {e}"));
         }
         _ => {}
     }
@@ -160,8 +162,23 @@ pub fn cmd_get_download_dir() -> String {
     crate::utils::get_downloads_dir().to_string_lossy().to_string()
 }
 
+fn validate_path_in_downloads(path: &str) -> bool {
+    if path.is_empty() {
+        return false;
+    }
+    let downloads = crate::utils::get_downloads_dir();
+    let path_buf = std::path::PathBuf::from(path);
+    // Canonicalize if possible, otherwise use the path as-is
+    let canonical = path_buf.canonicalize().unwrap_or(path_buf.clone());
+    let downloads_canonical = downloads.canonicalize().unwrap_or(downloads);
+    canonical.starts_with(&downloads_canonical)
+}
+
 #[tauri::command]
 pub async fn cmd_open_file(path: String) -> Result<(), String> {
+    if !validate_path_in_downloads(&path) {
+        return Err("Cannot open files outside the downloads directory.".to_string());
+    }
     #[cfg(target_os = "macos")]
     {
         tokio::process::Command::new("open")
@@ -188,7 +205,10 @@ pub async fn cmd_open_file(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn cmd_open_folder(path: String) -> Result<(), String> {
-    #[allow(unused_variables)]
+    if !validate_path_in_downloads(&path) {
+        return Err("Cannot open folders outside the downloads directory.".to_string());
+    }
+    #[cfg(target_os = "linux")]
     let folder = std::path::Path::new(&path)
         .parent()
         .map(|p| p.to_string_lossy().to_string())
@@ -233,6 +253,8 @@ pub async fn cmd_update_ytdlp(
 
 #[tauri::command]
 pub fn cmd_file_exists(path: String) -> bool {
+    if path.is_empty() { return false; }
+    if !validate_path_in_downloads(&path) { return false; }
     std::path::Path::new(&path).exists()
 }
 

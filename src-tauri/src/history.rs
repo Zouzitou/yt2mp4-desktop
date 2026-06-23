@@ -27,6 +27,7 @@ fn history_path(app_data_dir: &PathBuf) -> PathBuf {
 }
 
 pub fn load_history(app_data_dir: &PathBuf) -> Vec<HistoryEntry> {
+    let _lock = HISTORY_MUTEX.lock(); // Acquire read-side lock to avoid stale reads during concurrent writes
     let path = history_path(app_data_dir);
     if let Ok(contents) = std::fs::read_to_string(&path) {
         if let Ok(mut entries) = serde_json::from_str::<Vec<HistoryEntry>>(&contents) {

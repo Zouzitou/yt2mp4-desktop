@@ -157,7 +157,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* App version */}
-        <InfoRow label="Yt2Mp4 Desktop" value="v1.0.0" />
+        <InfoRow label="Yt2Mp4 Desktop" value="v1.2.2" />
 
         {/* yt-dlp version */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

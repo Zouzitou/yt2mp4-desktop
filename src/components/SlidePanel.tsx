@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Props {
   open: boolean;
@@ -9,12 +9,16 @@ interface Props {
 }
 
 export default function SlidePanel({ open, onClose, title, children }: Props) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape' && open) onClose(); };
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  }, [open]);
 
   return (
     <AnimatePresence>

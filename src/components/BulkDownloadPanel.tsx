@@ -185,8 +185,8 @@ export default function BulkDownloadPanel({
   const errorCount = queue.filter((q) => q.status === 'error').length;
   const pct = Math.round(downloadProgress?.percent ?? 0);
   const overallPct =
-    queue.length > 0
-      ? Math.round(((currentIndex + (phase === 'downloading' ? pct / 100 : 0)) / queue.length) * 100)
+    queue.length > 0 && currentIndex >= 0
+      ? Math.round(((Math.max(doneCount, currentIndex) + (phase === 'downloading' ? pct / 100 : 0)) / queue.length) * 100)
       : 0;
 
   return (

@@ -40,6 +40,13 @@
     "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-text",
     "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$APPDATA/**" }
+      ]
+    },
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
     "fs:allow-mkdir",

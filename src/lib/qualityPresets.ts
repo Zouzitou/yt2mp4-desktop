@@ -38,6 +38,7 @@ export function presetFromDefaultQuality(defaultQuality: string): QualityOption 
   if (defaultQuality === 'best') {
     return BULK_QUALITY_PRESETS[0];
   }
+  // Legacy fallback: some persisted settings may still have 'audio' saved from a previous version
   if (defaultQuality === 'audio') {
     return BULK_QUALITY_PRESETS[BULK_QUALITY_PRESETS.length - 1];
   }

@@ -36,6 +36,15 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'yt2mp4-settings',
+      onRehydrateStorage: () => {
+        // If storage is corrupted or unavailable, reset to defaults gracefully
+        try {
+          return undefined;
+        } catch {
+          return undefined;
+        }
+      },
+      partialize: (state) => ({ settings: state.settings }),
     }
   )
 );

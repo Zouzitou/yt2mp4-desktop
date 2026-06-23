@@ -41,8 +41,10 @@ export function extractVideoId(url: string): string {
   if (tiktokVideo) return tiktokVideo[2];
   const tiktokShort = trimmed.match(/tiktok\.com\/t\/([A-Za-z0-9]+)/);
   if (tiktokShort) return tiktokShort[1];
-  const tiktokCode = trimmed.match(/tiktok\.com\/([A-Za-z0-9_-]{5,})/);
-  if (tiktokCode) return tiktokCode[1];
+  // Short-code URLs — TikTok IDs are 6-11 chars, not reserved paths
+  const RESERVED = new Set(['about','discover','following','legal','live','login','trending','upload','privacy','terms','community','explore']);
+  const tiktokCode = trimmed.match(/tiktok\.com\/([A-Za-z0-9_-]{6,15})/);
+  if (tiktokCode && !RESERVED.has(tiktokCode[1].toLowerCase())) return tiktokCode[1];
 
   return '';
 }

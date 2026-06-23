@@ -39,7 +39,6 @@ export default function App() {
   const {
     appState,
     setAppState,
-    url,
     videoInfo,
     setVideoInfo,
     selectedQuality,
@@ -71,6 +70,8 @@ export default function App() {
   const downloadAbortRef = useRef(false);
   // Increments on every URL submit. Stale responses are ignored.
   const fetchIdRef = useRef(0);
+  // Captured URL at submit time — prevents stale store value on download
+  const submittedUrlRef = useRef('');
   // Avoid re-asking for notification permission once denied
   const notificationAskedRef = useRef(false);
   const installingRef = useRef(false);
@@ -86,8 +87,8 @@ export default function App() {
         for (const key of Object.keys(s) as (keyof typeof s)[]) {
           const backendVal = s[key];
           const localVal = current[key];
-          const isEmpty = localVal === '' || localVal === 0 || localVal === undefined;
-          if (isEmpty && backendVal) {
+          const isEmpty = localVal === '' || localVal === undefined || localVal === null;
+          if (isEmpty && backendVal != null && backendVal !== '') {
             (merged as Record<string, unknown>)[key] = backendVal;
             changed = true;
           }
@@ -100,11 +101,11 @@ export default function App() {
         }
         if (changed) {
           setSettings(merged);
-          saveSettings(merged).catch(() => {});
+          saveSettings(merged).catch((e) => { console.error('Failed to save settings:', e); });
         }
       })
-      .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      .catch((e) => { console.error('Failed to load settings:', e); });
+  }, []);
 
   // Check deps on mount
   useEffect(() => {
@@ -116,11 +117,12 @@ export default function App() {
         }
         // Already have binaries — stay idle
       })
-      .catch(() => {
+      .catch((e) => {
+        console.error('Failed to check dependencies:', e);
         setAppState('setup');
         runInstall();
       });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Setup progress events
   useEffect(() => {
@@ -160,10 +162,6 @@ export default function App() {
           setHasNewDownloads(false);
         }
       }
-      if (e.key === 'Escape') {
-        if (settingsOpen) { setSettingsOpen(false); return; }
-        if (historyOpen)  { setHistoryOpen(false);  return; }
-      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -187,6 +185,7 @@ export default function App() {
   const handleUrlSubmit = async (submittedUrl: string) => {
     if (appState === 'downloading') return;
     const myFetchId = ++fetchIdRef.current;
+    submittedUrlRef.current = submittedUrl.trim();
     setAppState('fetching');
     setError(null);
     setVideoInfo(null);
@@ -273,7 +272,7 @@ export default function App() {
     }
 
     const outputDir = settings.download_dir || (await getDownloadDir());
-    const downloadUrl = videoInfo.webpage_url?.trim() || url.trim();
+    const downloadUrl = videoInfo.webpage_url?.trim() || submittedUrlRef.current;
     if (!downloadUrl) {
       setError('Missing video URL. Paste the link again.');
       setAppState('download_error');
@@ -327,16 +326,16 @@ export default function App() {
   const handleCancel = () => {
     downloadAbortRef.current = true;
     // Actually kill the underlying yt-dlp / ffmpeg process
-    cancelDownload().catch(() => {});
+    cancelDownload().catch((e) => { console.error('Failed to cancel download:', e); });
     setDownloadProgress(null);
     setAppState('preview');
   };
 
   const handleOpenFile = () => {
-    if (downloadedFilePath) openFile(downloadedFilePath).catch(() => {});
+    if (downloadedFilePath) openFile(downloadedFilePath).catch((e) => { console.error('Failed to open file:', e); });
   };
   const handleOpenFolder = () => {
-    if (downloadedFilePath) openFolder(downloadedFilePath).catch(() => {});
+    if (downloadedFilePath) openFolder(downloadedFilePath).catch((e) => { console.error('Failed to open folder:', e); });
   };
   const handleDownloadAnother = () => { reset(); setClip(null); };
   const handleRetryDownload = () => { setAppState('preview'); setError(null); };

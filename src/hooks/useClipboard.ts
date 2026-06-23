@@ -29,11 +29,12 @@ export function useClipboardAutoPaste() {
         const trimmed = text.trim();
         if (
           isVideoUrl(trimmed) &&
-          trimmed !== urlRef.current &&
-          trimmed !== lastPasted.current
+          trimmed !== urlRef.current
         ) {
           lastPasted.current = trimmed;
           setUrl(trimmed);
+          // Reset after 2s so the same URL can be pasted again
+          setTimeout(() => { lastPasted.current = ''; }, 2000);
         }
       } catch {
         // Clipboard read failed — silently ignore

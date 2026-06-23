@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::collections::VecDeque;
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -195,8 +196,10 @@ fn pick_thumbnail(json: &Value, video_id: &str) -> String {
             return url.to_string();
         }
     }
-    // YouTube-only fallback
-    if !video_id.is_empty() && video_id.len() == 11 {
+    // YouTube-only fallback — only apply when the extractor confirms this is YouTube
+    let extractor = json["extractor"].as_str().unwrap_or("");
+    let is_youtube = extractor == "youtube" || json["webpage_url_domain"].as_str() == Some("youtube.com");
+    if is_youtube && !video_id.is_empty() && video_id.len() == 11 {
         return format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", video_id);
     }
     String::new()
@@ -274,6 +277,7 @@ pub async fn download_video(
 
     args.push("-o".to_string());
     args.push(output_template.clone());
+    args.push("--".to_string());
     args.push(url.clone());
 
     let mut child = Command::new(&ytdlp)
@@ -291,14 +295,26 @@ pub async fn download_video(
         guard.pid = pid;
     }
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
+    let stdout = child.stdout.take()
+        .ok_or_else(|| "internal error: stdout pipe unavailable".to_string())?;
+    let stderr = child.stderr.take()
+        .ok_or_else(|| "internal error: stderr pipe unavailable".to_string())?;
 
-    // Stderr reader: detect muxing/recoding phase
+    // Stderr reader: detect muxing/recoding phase AND collect lines for error reporting
     let app_err = app.clone();
+    let stderr_lines = Arc::new(TokioMutex::new(VecDeque::with_capacity(64)));
+    let stderr_lines_task = stderr_lines.clone();
     let stderr_task = tokio::spawn(async move {
         let mut reader = BufReader::new(stderr).lines();
         while let Ok(Some(line)) = reader.next_line().await {
+            // Keep the last 64 lines for error diagnostics
+            {
+                let mut lines = stderr_lines_task.lock().await;
+                lines.push_back(line.clone());
+                if lines.len() > 64 {
+                    lines.pop_front();
+                }
+            }
             if line.contains("[Merger]")
                 || line.contains("[ffmpeg]")
                 || line.contains("[VideoConvertor]")
@@ -353,7 +369,9 @@ pub async fn download_video(
     }
 
     // Drain stderr task before waiting on the child, so we capture all output
-    let _ = stderr_task.await;
+    if let Err(e) = stderr_task.await {
+        eprintln!("stderr reader task panicked: {e}");
+    }
 
     let status = child.wait().await
         .map_err(|e| format!("Process error: {}", e))?;
@@ -383,7 +401,7 @@ pub async fn download_video(
                 ));
             }
         }
-        let stderr_hint = classify_download_error(&output_dir);
+        let stderr_hint = classify_download_error(&stderr_lines).await;
         return Err(stderr_hint);
     }
 
@@ -430,8 +448,15 @@ fn emit_complete(app: &AppHandle) {
     });
 }
 
-fn classify_download_error(_output_dir: &str) -> String {
-    "Download failed. The video may be unavailable or there was a network error.".to_string()
+async fn classify_download_error(stderr_lines: &Arc<TokioMutex<VecDeque<String>>>) -> String {
+    let lines = stderr_lines.lock().await;
+    let last_lines: Vec<&str> = lines.iter().rev().take(3).map(|s| s.as_str()).collect();
+    let diagnostic: String = last_lines.into_iter().rev().collect::<Vec<_>>().join(" | ");
+    if diagnostic.is_empty() {
+        "Download failed. The video may be unavailable or there was a network error.".to_string()
+    } else {
+        format!("Download failed: {}", diagnostic)
+    }
 }
 
 /// Cancel the currently active download (kill the underlying process).
@@ -459,6 +484,12 @@ pub async fn cancel_active_download(active: &ActiveDownload) -> Result<(), Strin
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .output()
             .await;
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        // On exotic targets we can't send a signal — the process will
+        // drain naturally and check user_cancelled after the child exits.
+        eprintln!("warning: process cancellation not supported on this platform");
     }
 
     Ok(())
@@ -557,7 +588,18 @@ async fn ffmpeg_cut(
         return Err("Failed to cut video with ffmpeg.".to_string());
     }
 
-    // Remove the full-length original now that the clip is saved
+    // Verify the clipped output is valid before deleting the original
+    if let Ok(meta) = std::fs::metadata(&output) {
+        if meta.len() == 0 {
+            let _ = std::fs::remove_file(&output);
+            return Err("Failed to cut video: ffmpeg produced an empty file.".to_string());
+        }
+    } else {
+        // Output doesn't exist at all — don't delete the original
+        return Err("Failed to cut video: ffmpeg did not produce an output file.".to_string());
+    }
+
+    // Remove the full-length original now that the clip is saved and verified
     let _ = std::fs::remove_file(input);
 
     Ok(output)

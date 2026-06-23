@@ -54,7 +54,7 @@ export default function UrlInput({ onSubmit, compact, disabled }: Props) {
       setUrl(text);
       if (validate(text)) {
         setValidationError(null);
-        setTimeout(() => onSubmit(text), 40);
+        onSubmit(text);
       } else {
         setValidationError(null);
       }
